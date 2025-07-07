@@ -16,15 +16,18 @@ import { KeyboardShortcuts } from '@/lib/KeyboardShortcuts';
 import { SettingsMenu } from '@/lib/SettingsMenu';
 import { useSetupE2EE } from '@/lib/useSetupE2EE';
 import { useLowCPUOptimizer } from '@/lib/usePerfomanceOptimiser';
+import { useRouter } from 'next/navigation';
 
 export function VideoConferenceClientImpl(props: {
   liveKitUrl: string;
   token: string;
   codec: VideoCodec | undefined;
+  podId?: string;
 }) {
   const keyProvider = new ExternalE2EEKeyProvider();
   const { worker, e2eePassphrase } = useSetupE2EE();
   const e2eeEnabled = !!(e2eePassphrase && worker);
+  const router = useRouter();
 
   const [e2eeSetupComplete, setE2eeSetupComplete] = useState(false);
 
@@ -78,6 +81,52 @@ export function VideoConferenceClientImpl(props: {
   }, [room, props.liveKitUrl, props.token, connectOptions, e2eeSetupComplete]);
 
   useLowCPUOptimizer(room);
+
+  // Handle room disconnection and pod shutdown
+  useEffect(() => {
+    const shutdownPod = async () => {
+      if (!props.podId) return;
+      
+      try {
+        await fetch(`/api/runpod/pods/${props.podId}/stop`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('Pod shutdown initiated');
+      } catch (error) {
+        console.error('Failed to shutdown pod:', error);
+      }
+    };
+
+    const handleDisconnect = async () => {
+      console.log('Room disconnected, shutting down pod...');
+      await shutdownPod();
+      // Navigate back to bot selection after short delay
+      setTimeout(() => {
+        router.push('/');
+      }, 1000);
+    };
+
+    // Listen for room disconnect events
+    room.on('disconnected', handleDisconnect);
+
+    // Handle page unload as backup
+    const handleBeforeUnload = () => {
+      if (props.podId) {
+        // Use navigator.sendBeacon for reliable delivery on page unload
+        navigator.sendBeacon(`/api/runpod/pods/${props.podId}/stop`, JSON.stringify({}));
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      room.off('disconnected', handleDisconnect);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [room, props.podId, router]);
 
   return (
     <div className="lk-room-container">

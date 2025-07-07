@@ -12,6 +12,7 @@ export default async function Page({
     region?: string;
     hq?: string;
     codec?: string;
+    podId?: string;
   }>;
 }) {
   const _params = await params;
@@ -28,6 +29,7 @@ export default async function Page({
       region={_searchParams.region}
       hq={hq}
       codec={codec}
+      podId={_searchParams.podId}
     />
   );
 }

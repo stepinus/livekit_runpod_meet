@@ -7,9 +7,10 @@ export default async function CustomRoomConnection(props: {
     liveKitUrl?: string;
     token?: string;
     codec?: string;
+    podId?: string;
   }>;
 }) {
-  const { liveKitUrl, token, codec } = await props.searchParams;
+  const { liveKitUrl, token, codec, podId } = await props.searchParams;
   if (typeof liveKitUrl !== 'string') {
     return <h2>Missing LiveKit URL</h2>;
   }
@@ -22,7 +23,7 @@ export default async function CustomRoomConnection(props: {
 
   return (
     <main data-lk-theme="default" style={{ height: '100%' }}>
-      <VideoConferenceClientImpl liveKitUrl={liveKitUrl} token={token} codec={codec} />
+      <VideoConferenceClientImpl liveKitUrl={liveKitUrl} token={token} codec={codec} podId={podId} />
     </main>
   );
 }

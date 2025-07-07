@@ -39,6 +39,7 @@ export function PageClientImpl(props: {
   region?: string;
   hq: boolean;
   codec: VideoCodec;
+  podId?: string;
 }) {
   const [preJoinChoices, setPreJoinChoices] = React.useState<LocalUserChoices | undefined>(
     undefined,
@@ -83,6 +84,7 @@ export function PageClientImpl(props: {
           connectionDetails={connectionDetails}
           userChoices={preJoinChoices}
           options={{ codec: props.codec, hq: props.hq }}
+          podId={props.podId}
         />
       )}
     </main>
@@ -96,6 +98,7 @@ function VideoConferenceComponent(props: {
     hq: boolean;
     codec: VideoCodec;
   };
+  podId?: string;
 }) {
   const keyProvider = new ExternalE2EEKeyProvider();
   const { worker, e2eePassphrase } = useSetupE2EE();
@@ -198,7 +201,23 @@ function VideoConferenceComponent(props: {
   const lowPowerMode = useLowCPUOptimizer(room);
 
   const router = useRouter();
-  const handleOnLeave = React.useCallback(() => router.push('/'), [router]);
+  const handleOnLeave = React.useCallback(async () => {
+    // Shutdown the pod if podId is provided
+    if (props.podId) {
+      try {
+        await fetch(`/api/runpod/pods/${props.podId}/stop`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('Pod shutdown initiated');
+      } catch (error) {
+        console.error('Failed to shutdown pod:', error);
+      }
+    }
+    router.push('/');
+  }, [router, props.podId]);
   const handleError = React.useCallback((error: Error) => {
     console.error(error);
     alert(`Encountered an unexpected error, check the console logs for details: ${error.message}`);
