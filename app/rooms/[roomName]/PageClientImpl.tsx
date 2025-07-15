@@ -106,25 +106,15 @@ function VideoConferenceComponent(props: {
 
   const [e2eeSetupComplete, setE2eeSetupComplete] = React.useState(false);
 
-  const keepPodAliveOnDisconnect = React.useRef(false);
+  const isUnloading = React.useRef(false);
 
   React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.altKey) {
-        keepPodAliveOnDisconnect.current = true;
-      }
+    const onBeforeUnload = () => {
+      isUnloading.current = true;
     };
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (!e.altKey) {
-        keepPodAliveOnDisconnect.current = false;
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
+    window.addEventListener('beforeunload', onBeforeUnload);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('beforeunload', onBeforeUnload);
     };
   }, []);
 
@@ -225,7 +215,7 @@ function VideoConferenceComponent(props: {
   const router = useRouter();
   const handleOnLeave = React.useCallback(async () => {
     // Shutdown the pod if podId is provided
-    if (props.podId && !keepPodAliveOnDisconnect.current) {
+    if (props.podId && !isUnloading.current) {
       try {
         await fetch(`/api/runpod/pods/${props.podId}/stop`, {
           method: 'POST',
